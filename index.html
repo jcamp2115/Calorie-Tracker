@@ -538,3 +538,421 @@
                             <span class="stat-value" id="weeklyAvgConsumed">0 cal</span>
                         </div>
                         <div class="stat-row">
+                            <span class="stat-label">Daily Average Burned:</span>
+                            <span class="stat-value" id="weeklyAvgBurned">0 cal</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Cumulative Surplus/Deficit:</span>
+                            <span class="stat-value" id="cumulativeBalance">0 cal</span>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Exercise Tally (This Week)</div>
+                    <div class="exercise-tally">
+                        <div class="tally-item">
+                            <div class="tally-count" id="hikesCount">0</div>
+                            <div class="tally-label">Hikes</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="yogaCount">0</div>
+                            <div class="tally-label">Yoga</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="absCount">0</div>
+                            <div class="tally-label">Abs</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="legsCount">0</div>
+                            <div class="tally-label">Legs</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="buttCount">0</div>
+                            <div class="tally-label">Butt</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="armsCount">0</div>
+                            <div class="tally-label">Arms</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="runsCount">0</div>
+                            <div class="tally-label">Runs</div>
+                        </div>
+                        <div class="tally-item">
+                            <div class="tally-count" id="totalWorkouts">0</div>
+                            <div class="tally-label">Total Workouts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+        let data = {};
+        let cumulativeBalance = 0;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('App initializing...');
+            loadData();
+            updateDateDisplay();
+            updateCalories();
+            updateWeeklyStats();
+            console.log('App initialized, current date:', currentDate);
+        });
+
+        function updateDateDisplay() {
+            const dateStr = currentDate.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+            console.log('Updating date display:', dateStr);
+            document.getElementById('currentDate').textContent = dateStr;
+        }
+
+        function changeDate(direction) {
+            console.log('Changing date by:', direction);
+            saveCurrentData();
+            currentDate.setDate(currentDate.getDate() + direction);
+            updateDateDisplay();
+            loadDayData();
+            updateCalories();
+        }
+
+        function getDateKey(date = currentDate) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function saveCurrentData() {
+            const dateKey = getDateKey();
+            
+            if (!data[dateKey]) {
+                data[dateKey] = {
+                    foods: {},
+                    exercises: {},
+                    customFoods: [],
+                    miscExercise: ''
+                };
+            }
+
+            const meals = ['muesli', 'tofu', 'smoothie', 'sandwich', 'pbbanana', 'fruit', 'pbchocolate'];
+            meals.forEach(meal => {
+                data[dateKey].foods[meal] = document.getElementById(meal).checked;
+            });
+
+            const exercises = ['hike60', 'hike90', 'yoga', 'abs', 'legs', 'butt', 'arms', 'run20', 'run30', 'run40', 'run50'];
+            exercises.forEach(exercise => {
+                const checkbox = document.getElementById(exercise);
+                const input = checkbox.closest('.exercise-item').querySelector('.exercise-input');
+                data[dateKey].exercises[exercise] = {
+                    checked: checkbox.checked,
+                    calories: parseInt(input.value) || 0
+                };
+            });
+
+            data[dateKey].customFoods = Array.from(document.querySelectorAll('#customFoods .food-item')).map(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                const name = item.querySelector('.item-name').textContent;
+                const calories = parseInt(item.querySelector('.item-calories').textContent);
+                return {
+                    name: name,
+                    calories: calories,
+                    checked: checkbox.checked
+                };
+            });
+
+            data[dateKey].miscExercise = document.getElementById('miscExercise').value;
+
+            try {
+                const dataToSave = {
+                    data: data,
+                    cumulativeBalance: cumulativeBalance
+                };
+                localStorage.setItem('hinaWellnessData', JSON.stringify(dataToSave));
+            } catch (e) {
+                console.log('Data saved in memory');
+            }
+        }
+
+        function loadData() {
+            try {
+                const savedData = localStorage.getItem('hinaWellnessData');
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    data = parsed.data || {};
+                    cumulativeBalance = parsed.cumulativeBalance || 0;
+                }
+            } catch (e) {
+                console.log('Starting with fresh data');
+            }
+            loadDayData();
+        }
+
+        function loadDayData() {
+            const dateKey = getDateKey();
+            const dayData = data[dateKey] || {
+                foods: {},
+                exercises: {},
+                customFoods: [],
+                miscExercise: ''
+            };
+
+            const meals = ['muesli', 'tofu', 'smoothie', 'sandwich', 'pbbanana', 'fruit', 'pbchocolate'];
+            meals.forEach(meal => {
+                document.getElementById(meal).checked = dayData.foods[meal] || false;
+            });
+
+            const exercises = ['hike60', 'hike90', 'yoga', 'abs', 'legs', 'butt', 'arms', 'run20', 'run30', 'run40', 'run50'];
+            exercises.forEach(exercise => {
+                const checkbox = document.getElementById(exercise);
+                const input = checkbox.closest('.exercise-item').querySelector('.exercise-input');
+                
+                if (dayData.exercises[exercise]) {
+                    checkbox.checked = dayData.exercises[exercise].checked;
+                    input.value = dayData.exercises[exercise].calories;
+                } else {
+                    checkbox.checked = false;
+                }
+            });
+
+            const customFoodsContainer = document.getElementById('customFoods');
+            customFoodsContainer.innerHTML = '';
+            dayData.customFoods.forEach(food => {
+                addCustomFoodToDOM(food.name, food.calories, food.checked);
+            });
+
+            document.getElementById('miscExercise').value = dayData.miscExercise || '';
+        }
+
+        function updateCalories() {
+            let totalConsumed = 0;
+            let totalBurned = 0;
+
+            const mealCalories = {
+                muesli: 418,
+                tofu: 265,
+                smoothie: 465,
+                sandwich: 375,
+                pbbanana: 230,
+                fruit: 200,
+                pbchocolate: 230
+            };
+
+            Object.keys(mealCalories).forEach(meal => {
+                if (document.getElementById(meal).checked) {
+                    totalConsumed += mealCalories[meal];
+                }
+            });
+
+            document.querySelectorAll('#customFoods .food-item input[type="checkbox"]:checked').forEach(checkbox => {
+                const caloriesText = checkbox.closest('.food-item').querySelector('.item-calories').textContent;
+                const calories = parseInt(caloriesText.match(/\d+/)[0]);
+                totalConsumed += calories;
+            });
+
+            const exercises = ['hike60', 'hike90', 'yoga', 'abs', 'legs', 'butt', 'arms', 'run20', 'run30', 'run40', 'run50'];
+            exercises.forEach(exercise => {
+                const checkbox = document.getElementById(exercise);
+                if (checkbox.checked) {
+                    const input = checkbox.closest('.exercise-item').querySelector('.exercise-input');
+                    totalBurned += parseInt(input.value) || 0;
+                }
+            });
+
+            const remaining = 1500 + totalBurned - totalConsumed;
+            document.getElementById('remainingCalories').textContent = remaining;
+            document.getElementById('remainingCalories').style.color = remaining < 0 ? '#E13DA9' : '#A21855';
+            
+            document.getElementById('calorieBreakdown').textContent = totalConsumed + ' consumed • ' + totalBurned + ' burned';
+
+            saveCurrentData();
+            updateWeeklyStats();
+        }
+
+        function addCustomFood() {
+            const nameInput = document.getElementById('customFoodName');
+            const caloriesInput = document.getElementById('customFoodCalories');
+            
+            const name = nameInput.value.trim();
+            const calories = parseInt(caloriesInput.value);
+
+            if (name && calories > 0) {
+                addCustomFoodToDOM(name, calories, false);
+                nameInput.value = '';
+                caloriesInput.value = '';
+                updateCalories();
+            }
+        }
+
+        function addCustomFoodToDOM(name, calories, checked) {
+            const container = document.getElementById('customFoods');
+            const foodItem = document.createElement('div');
+            foodItem.className = 'food-item';
+            foodItem.innerHTML = '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="updateCalories()"><span class="item-name">' + name + '</span><span class="item-calories">' + calories + ' cal</span>';
+            container.appendChild(foodItem);
+        }
+
+        function saveMiscExercise() {
+            saveCurrentData();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'weekly') {
+                updateWeeklyStats();
+            }
+        }
+
+        function updateWeeklyStats() {
+            const today = new Date(currentDate);
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+
+            let weeklyConsumed = 0;
+            let weeklyBurned = 0;
+            let daysWithData = 0;
+            let exerciseCounts = {
+                hikes: 0,
+                yoga: 0,
+                abs: 0,
+                legs: 0,
+                butt: 0,
+                arms: 0,
+                runs: 0,
+                total: 0
+            };
+
+            cumulativeBalance = 0;
+            Object.keys(data).forEach(dateKey => {
+                const dayData = data[dateKey];
+                let dayConsumed = 0;
+                let dayBurned = 0;
+
+                const mealCalories = { 
+                    muesli: 418, 
+                    tofu: 265, 
+                    smoothie: 465, 
+                    sandwich: 375, 
+                    pbbanana: 230, 
+                    fruit: 200, 
+                    pbchocolate: 230 
+                };
+                Object.keys(mealCalories).forEach(meal => {
+                    if (dayData.foods[meal]) {
+                        dayConsumed += mealCalories[meal];
+                    }
+                });
+
+                dayData.customFoods.forEach(food => {
+                    if (food.checked) {
+                        dayConsumed += food.calories;
+                    }
+                });
+
+                const exercises = ['hike60', 'hike90', 'yoga', 'abs', 'legs', 'butt', 'arms', 'run20', 'run30', 'run40', 'run50'];
+                exercises.forEach(exercise => {
+                    if (dayData.exercises[exercise] && dayData.exercises[exercise].checked) {
+                        dayBurned += dayData.exercises[exercise].calories;
+                    }
+                });
+
+                cumulativeBalance += (dayConsumed - dayBurned - 1500);
+            });
+
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                const dateKey = getDateKey(date);
+                const dayData = data[dateKey];
+
+                if (dayData) {
+                    let dayConsumed = 0;
+                    let dayBurned = 0;
+
+                    const mealCalories = { 
+                        muesli: 418, 
+                        tofu: 265, 
+                        smoothie: 465, 
+                        sandwich: 375, 
+                        pbbanana: 230, 
+                        fruit: 200, 
+                        pbchocolate: 230 
+                    };
+                    Object.keys(mealCalories).forEach(meal => {
+                        if (dayData.foods[meal]) {
+                            dayConsumed += mealCalories[meal];
+                        }
+                    });
+
+                    dayData.customFoods.forEach(food => {
+                        if (food.checked) {
+                            dayConsumed += food.calories;
+                        }
+                    });
+
+                    const exercises = ['hike60', 'hike90', 'yoga', 'abs', 'legs', 'butt', 'arms', 'run20', 'run30', 'run40', 'run50'];
+                    exercises.forEach(exercise => {
+                        if (dayData.exercises[exercise] && dayData.exercises[exercise].checked) {
+                            dayBurned += dayData.exercises[exercise].calories;
+                            exerciseCounts.total++;
+
+                            if (exercise.includes('hike')) exerciseCounts.hikes++;
+                            else if (exercise === 'yoga') exerciseCounts.yoga++;
+                            else if (exercise === 'abs') exerciseCounts.abs++;
+                            else if (exercise === 'legs') exerciseCounts.legs++;
+                            else if (exercise === 'butt') exerciseCounts.butt++;
+                            else if (exercise === 'arms') exerciseCounts.arms++;
+                            else if (exercise.includes('run')) exerciseCounts.runs++;
+                        }
+                    });
+
+                    weeklyConsumed += dayConsumed;
+                    weeklyBurned += dayBurned;
+                    daysWithData++;
+                }
+            }
+
+            const avgConsumed = daysWithData > 0 ? Math.round(weeklyConsumed / daysWithData) : 0;
+            const avgBurned = daysWithData > 0 ? Math.round(weeklyBurned / daysWithData) : 0;
+
+            document.getElementById('weeklyAvgConsumed').textContent = avgConsumed + ' cal';
+            document.getElementById('weeklyAvgBurned').textContent = avgBurned + ' cal';
+            
+            const balanceText = cumulativeBalance >= 0 ? '+' + cumulativeBalance + ' cal' : cumulativeBalance + ' cal';
+            document.getElementById('cumulativeBalance').textContent = balanceText;
+            document.getElementById('cumulativeBalance').style.color = cumulativeBalance >= 0 ? '#E13DA9' : '#A21855';
+
+            document.getElementById('hikesCount').textContent = exerciseCounts.hikes;
+            document.getElementById('yogaCount').textContent = exerciseCounts.yoga;
+            document.getElementById('absCount').textContent = exerciseCounts.abs;
+            document.getElementById('legsCount').textContent = exerciseCounts.legs;
+            document.getElementById('buttCount').textContent = exerciseCounts.butt;
+            document.getElementById('armsCount').textContent = exerciseCounts.arms;
+            document.getElementById('runsCount').textContent = exerciseCounts.runs;
+            document.getElementById('totalWorkouts').textContent = exerciseCounts.total;
+        }
+
+        document.getElementById('customFoodName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('customFoodCalories').focus();
+            }
+        });
+
+        document.getElementById('customFoodCalories').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addCustomFood();
+            }
+        });
+    </script>
+</body>
+</html>
